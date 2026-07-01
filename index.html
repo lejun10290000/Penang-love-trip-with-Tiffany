@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="description" content="A mobile-friendly 4-day, 3-night Penang travel budget calculator with itemized expenses, saved history, backup import/export, and sharing." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>Penang 4D3N Budget Planner</title>
+  <style>
+    :root {
+      --bg: #f3f7f6;
+      --card: #ffffff;
+      --text: #16302d;
+      --muted: #6b7f7c;
+      --primary: #0f766e;
+      --primary-dark: #0b5f59;
+      --primary-soft: #dff5f1;
+      --accent: #f59e0b;
+      --danger: #dc2626;
+      --line: #dfe9e7;
+      --shadow: 0 12px 30px rgba(15, 118, 110, 0.10);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(15, 118, 110, 0.13), transparent 28%),
+        linear-gradient(180deg, #eef8f6 0%, var(--bg) 46%, #f7faf9 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: calc(145px + env(safe-area-inset-bottom));
+    }
+
+    button, input, select, textarea { font: inherit; }
+    .app { width: min(100%, 720px); margin: 0 auto; padding: 18px 16px 32px; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f766e 0%, #0b5f59 65%, #064e48 100%);
+      color: white;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 18px 38px rgba(6, 78, 72, 0.24);
+      margin-bottom: 18px;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.09);
+      right: -45px;
+      top: -45px;
+    }
+    .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; position: relative; z-index: 1; }
+    .eyebrow { margin: 0 0 8px; font-size: .76rem; letter-spacing: .13em; font-weight: 800; text-transform: uppercase; opacity: .84; }
+    h1 { margin: 0; font-size: clamp(1.65rem, 6vw, 2.35rem); line-height: 1.08; letter-spacing: -.03em; }
+    .hero p { margin: 10px 0 0; color: rgba(255,255,255,.82); max-width: 520px; line-height: 1.55; font-size: .94rem; }
+    .pin { flex: 0 0 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; background: rgba(255,255,255,.14); backdrop-filter: blur(8px); font-size: 1.4rem; }
+
+    .trip-badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; position: relative; z-index: 1; }
+    .trip-badge { padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,.14); font-size: .75rem; font-weight: 800; }
+
+    .section-title { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 22px 4px 10px; }
+    .section-title h2 { margin: 0; font-size: 1.05rem; letter-spacing: -.01em; }
+    .section-title span { color: var(--muted); font-size: .78rem; text-align: right; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(15, 118, 110, .08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label { display: block; font-size: .78rem; font-weight: 750; color: #4d6662; margin: 0 0 7px; }
+    .input-wrap { position: relative; display: flex; align-items: center; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fbfdfc;
+      color: var(--text);
+      border-radius: 14px;
+      min-height: 48px;
+      padding: 12px 13px;
+      outline: none;
+      transition: .18s ease;
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(15, 118, 110, .10); background: white; }
+    input[type="number"] { padding-left: 47px; }
+    .simple-number input { padding-left: 13px; }
+    .prefix { position: absolute; left: 13px; font-size: .78rem; font-weight: 800; color: var(--primary); pointer-events: none; z-index: 1; }
+
+    .expense-head { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+    .icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: var(--primary-soft); font-size: 1.22rem; flex: 0 0 auto; }
+    .expense-head h3 { margin: 0; font-size: .98rem; }
+    .expense-head p { margin: 3px 0 0; color: var(--muted); font-size: .76rem; }
+
+    .day-card { padding: 0; overflow: hidden; }
+    .day-card summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 17px 18px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(135deg, #ffffff, #f5fbf9);
+      user-select: none;
+    }
+    .day-card summary::-webkit-details-marker { display: none; }
+    .day-number { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: var(--primary); color: white; font-weight: 900; }
+    .day-heading strong { display: block; font-size: .98rem; }
+    .day-heading span { display: block; color: var(--muted); font-size: .74rem; margin-top: 3px; }
+    .day-summary-total { text-align: right; }
+    .day-summary-total span { display: block; color: var(--muted); font-size: .68rem; }
+    .day-summary-total strong { display: block; color: var(--primary-dark); font-size: .92rem; margin-top: 2px; }
+    .day-content { padding: 0 18px 18px; border-top: 1px solid #edf3f2; }
+    .day-note { margin-top: 14px; }
+    .day-expenses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .day-total-box { margin-top: 14px; background: var(--primary-soft); border-radius: 15px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .day-total-box span { color: var(--primary-dark); font-size: .78rem; font-weight: 750; }
+    .day-total-box strong { font-size: 1.05rem; color: var(--primary-dark); }
+
+    .shared-summary { display: grid; gap: 10px; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #edf3f2; }
+    .summary-row:last-child { border-bottom: 0; }
+    .summary-row span { color: #4d6662; font-size: .82rem; }
+    .summary-row strong { font-size: .88rem; }
+    .summary-row.total-line { margin-top: 4px; padding-top: 14px; border-top: 2px solid var(--primary-soft); border-bottom: 0; }
+    .summary-row.total-line span, .summary-row.total-line strong { color: var(--primary-dark); font-weight: 900; }
+
+    .range-line { display: grid; grid-template-columns: 1fr 68px; align-items: center; gap: 12px; }
+    input[type="range"] { padding: 0; min-height: 30px; accent-color: var(--primary); border: 0; background: transparent; box-shadow: none; }
+    .buffer-value { background: var(--primary-soft); color: var(--primary-dark); padding: 8px 10px; border-radius: 12px; text-align: center; font-weight: 850; font-size: .85rem; }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .btn { border: 0; border-radius: 14px; min-height: 44px; padding: 10px 14px; font-weight: 800; cursor: pointer; transition: transform .15s ease, opacity .15s ease; }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-soft { background: var(--primary-soft); color: var(--primary-dark); }
+    .btn-ghost { background: #f1f5f4; color: #4d6662; }
+
+    .summary-bar { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: min(100%, 720px); z-index: 20; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(243,247,246,0) 0%, rgba(243,247,246,.92) 22%, #f3f7f6 100%); }
+    .summary-inner { background: #0d3f3b; color: white; border-radius: 22px; box-shadow: 0 16px 40px rgba(13, 63, 59, .30); padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px; }
+    .summary-label { font-size: .72rem; color: rgba(255,255,255,.72); }
+    .summary-total { font-size: 1.48rem; font-weight: 900; letter-spacing: -.02em; margin-top: 2px; }
+    .summary-sub { font-size: .72rem; color: rgba(255,255,255,.72); margin-top: 4px; line-height: 1.35; }
+    .copy-btn { border: 0; width: 48px; height: 48px; border-radius: 15px; background: rgba(255,255,255,.14); color: white; cursor: pointer; font-size: 1.12rem; }
+
+    .toast { position: fixed; left: 50%; bottom: 115px; transform: translate(-50%, 20px); background: #102f2c; color: white; border-radius: 999px; padding: 10px 15px; font-size: .8rem; opacity: 0; pointer-events: none; transition: .25s ease; z-index: 40; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .footnote { color: var(--muted); font-size: .75rem; line-height: 1.5; text-align: center; padding: 8px 14px 0; }
+
+    .expense-list { display: grid; gap: 11px; margin-top: 14px; }
+    .expense-item { border: 1px solid var(--line); background: #fbfdfc; border-radius: 17px; padding: 12px; }
+    .expense-item-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 9px; }
+    .expense-item-top strong { font-size: .76rem; color: var(--primary-dark); }
+    .remove-expense { width: 34px; height: 34px; border: 0; border-radius: 11px; background: #fee2e2; color: var(--danger); cursor: pointer; display: grid; place-items: center; font-size: .92rem; }
+    .expense-item-grid { display: grid; grid-template-columns: .9fr 1.35fr 1fr; gap: 10px; align-items: end; }
+    .expense-item-grid label { font-size: .7rem; margin-bottom: 5px; }
+    .expense-item-grid input, .expense-item-grid select { min-height: 44px; border-radius: 12px; }
+    .empty-expenses { border: 1px dashed #b8ceca; background: #f7fbfa; border-radius: 15px; padding: 17px 14px; text-align: center; color: var(--muted); font-size: .78rem; line-height: 1.45; margin-top: 14px; }
+    .add-expense-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; }
+    .add-expense-row span { color: var(--muted); font-size: .72rem; }
+    .add-expense-btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .item-count { color: var(--muted); font-size: .69rem; margin-top: 2px; }
+
+
+    .storage-card { overflow: hidden; }
+    .storage-status { display: flex; align-items: flex-start; gap: 10px; padding: 12px 13px; border-radius: 15px; background: #f4faf8; border: 1px solid var(--line); margin-bottom: 12px; }
+    .storage-status-icon { flex: 0 0 30px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: var(--primary-soft); }
+    .storage-status strong { display: block; font-size: .8rem; }
+    .storage-status span { display: block; color: var(--muted); font-size: .72rem; line-height: 1.45; margin-top: 2px; }
+    .history-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .history-actions .btn { width: 100%; }
+    .history-list { display: grid; gap: 10px; margin-top: 14px; }
+    .history-empty { border: 1px dashed #b8ceca; background: #f7fbfa; border-radius: 15px; padding: 17px 14px; text-align: center; color: var(--muted); font-size: .78rem; line-height: 1.45; }
+    .history-entry { border: 1px solid var(--line); background: #fbfdfc; border-radius: 16px; padding: 13px; }
+    .history-entry-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .history-entry h4 { margin: 0; font-size: .85rem; line-height: 1.35; }
+    .history-entry p { margin: 4px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.4; }
+    .history-entry-total { color: var(--primary-dark); font-weight: 900; font-size: .87rem; white-space: nowrap; }
+    .history-entry-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 11px; }
+    .history-entry-actions button { border: 0; min-height: 38px; border-radius: 11px; font-size: .72rem; font-weight: 800; cursor: pointer; }
+    .history-load { background: var(--primary-soft); color: var(--primary-dark); }
+    .history-share { background: #e8eefc; color: #31559b; }
+    .history-delete { background: #fee2e2; color: var(--danger); }
+    .sync-note { color: var(--muted); font-size: .72rem; line-height: 1.5; margin: 12px 2px 0; }
+    .hidden-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+    @media (max-width: 520px) {
+      .app { padding-left: 12px; padding-right: 12px; }
+      .hero { padding: 21px; border-radius: 24px; }
+      .grid, .day-expenses, .expense-item-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .summary-bar { padding-left: 12px; padding-right: 12px; }
+      .day-card summary { padding: 15px; grid-template-columns: auto 1fr; }
+      .day-summary-total { grid-column: 2; text-align: left; margin-top: -5px; }
+      .day-content { padding-left: 15px; padding-right: 15px; }
+      .add-expense-row { align-items: flex-start; flex-direction: column; }
+      .add-expense-btn { width: 100%; justify-content: center; }
+      .history-actions { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <p class="eyebrow">Malaysia Travel Planner</p>
+          <h1>Penang Trip Budget</h1>
+          <p>Add every expense one by one for each day. Daily and whole-trip totals are calculated automatically.</p>
+        </div>
+        <div class="pin" aria-hidden="true">📍</div>
+      </div>
+      <div class="trip-badge-row">
+        <span class="trip-badge" id="heroDays">4 days</span>
+        <span class="trip-badge" id="heroNights">3 nights</span>
+        <span class="trip-badge">Currency: MYR</span>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <h2>Trip details</h2>
+      <span>Set for your 4D3N trip</span>
+    </div>
+
+    <section class="card">
+      <div class="grid">
+        <div class="field full">
+          <label for="tripName">Trip name</label>
+          <input id="tripName" type="text" value="My Penang 4D3N Trip" maxlength="60" />
+        </div>
+        <div class="field simple-number">
+          <label for="travelers">Travellers</label>
+          <input id="travelers" type="number" min="1" max="50" step="1" value="2" inputmode="numeric" />
+        </div>
+        <div class="field simple-number">
+          <label for="days">Trip days</label>
+          <input id="days" type="number" min="1" max="14" step="1" value="4" inputmode="numeric" />
+        </div>
+        <div class="field simple-number">
+          <label for="nights">Hotel nights</label>
+          <input id="nights" type="number" min="0" max="14" step="1" value="3" inputmode="numeric" />
+        </div>
+        <div class="field simple-number">
+          <label for="rooms">Hotel rooms</label>
+          <input id="rooms" type="number" min="1" max="20" step="1" value="1" inputmode="numeric" />
+        </div>
+        <div class="field full">
+          <label for="transportMode">Main transport to Penang</label>
+          <select id="transportMode">
+            <option>Car</option>
+            <option>Bus</option>
+            <option>Flight</option>
+            <option>Train</option>
+            <option>Motorcycle</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <h2>Shared trip costs</h2>
+      <span>Paid once or across the whole trip</span>
+    </div>
+
+    <section class="card">
+      <div class="expense-head"><div class="icon">🚗</div><div><h3>Return transport</h3><p>Petrol, toll, bus, train, or flight tickets</p></div></div>
+      <div class="field"><label for="mainTransport">Whole-trip amount</label><div class="input-wrap"><span class="prefix">RM</span><input id="mainTransport" type="number" min="0" step="0.01" value="0" inputmode="decimal" /></div></div>
+    </section>
+
+    <section class="card">
+      <div class="expense-head"><div class="icon">🏨</div><div><h3>Accommodation</h3><p>Price per room × rooms × 3 nights</p></div></div>
+      <div class="field"><label for="hotel">Price per room per night</label><div class="input-wrap"><span class="prefix">RM</span><input id="hotel" type="number" min="0" step="0.01" value="0" inputmode="decimal" /></div></div>
+      <div class="day-total-box"><span id="hotelFormula">0 nights × 1 room</span><strong id="hotelTotal">RM 0.00</strong></div>
+    </section>
+
+    <section class="card">
+      <div class="expense-head"><div class="icon">🧾</div><div><h3>Other shared costs</h3><p>Insurance, booking fees, car rental, or group purchases</p></div></div>
+      <div class="field"><label for="sharedOther">Whole-trip amount</label><div class="input-wrap"><span class="prefix">RM</span><input id="sharedOther" type="number" min="0" step="0.01" value="0" inputmode="decimal" /></div></div>
+    </section>
+
+    <div class="section-title">
+      <h2>Daily spending</h2>
+      <span>Add expenses one by one</span>
+    </div>
+
+    <div id="dayCards"></div>
+
+    <section class="card">
+      <div class="expense-head"><div class="icon">🛡️</div><div><h3>Safety buffer</h3><p>Add extra money for unexpected spending</p></div></div>
+      <div class="range-line">
+        <input id="buffer" type="range" min="0" max="30" value="10" step="1" />
+        <div class="buffer-value"><span id="bufferValue">10</span>%</div>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <h2>4D3N cost summary</h2>
+      <span>Daily and shared expenses</span>
+    </div>
+
+    <section class="card">
+      <div class="shared-summary" id="costSummary"></div>
+    </section>
+
+
+    <div class="section-title">
+      <h2>Saved trip history</h2>
+      <span>Save, reopen, or share a copy</span>
+    </div>
+
+    <section class="card storage-card">
+      <div class="storage-status">
+        <div class="storage-status-icon" aria-hidden="true">💾</div>
+        <div>
+          <strong id="storageStatusTitle">Checking storage…</strong>
+          <span id="storageStatusText">Your records are stored in this browser.</span>
+        </div>
+      </div>
+      <div class="history-actions">
+        <button id="saveRecordBtn" class="btn btn-primary" type="button">Save history record</button>
+        <button id="shareTripBtn" class="btn btn-soft" type="button">Share current trip</button>
+        <button id="exportTripBtn" class="btn btn-ghost" type="button">Export backup file</button>
+        <button id="importTripBtn" class="btn btn-ghost" type="button">Import backup file</button>
+      </div>
+      <input id="importTripFile" class="hidden-file" type="file" accept="application/json,.json" />
+      <div class="history-list" id="historyList"></div>
+      <p class="sync-note">History is private to this browser. A shared link or backup gives your girlfriend a copy, but changes will not update live on both phones without an online database.</p>
+    </section>
+
+    <section class="card">
+      <div class="btn-row">
+        <button id="sampleBtn" class="btn btn-primary" type="button">Load 4D3N example</button>
+        <button id="expandBtn" class="btn btn-soft" type="button">Open all days</button>
+        <button id="resetBtn" class="btn btn-ghost" type="button">Reset</button>
+      </div>
+      <div class="footnote">Your current draft saves automatically. Use “Save history record” to keep separate versions. Example values are not live Penang prices.</div>
+    </section>
+  </main>
+
+  <div class="summary-bar">
+    <div class="summary-inner">
+      <div>
+        <div class="summary-label">Estimated 4D3N total</div>
+        <div class="summary-total" id="grandTotal">RM 0.00</div>
+        <div class="summary-sub" id="summarySub">RM 0.00 per person • RM 0.00 average per day</div>
+      </div>
+      <button class="copy-btn" id="copyBtn" aria-label="Copy trip summary" title="Copy summary">📋</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Summary copied</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const STORAGE_KEY = 'penangTripBudgetItemizedV3';
+    const LEGACY_STORAGE_KEY = 'penangTripBudgetDailyV2';
+    const HISTORY_KEY = 'penangTripBudgetHistoryV1';
+    const SHARE_VERSION = 1;
+    const categories = [
+      { key: 'food', label: 'Food & drinks', icon: '🍜' },
+      { key: 'transport', label: 'Transport', icon: '🚌' },
+      { key: 'activities', label: 'Attraction', icon: '🎟️' },
+      { key: 'shopping', label: 'Shopping', icon: '🛍️' },
+      { key: 'other', label: 'Other', icon: '💳' }
+    ];
+
+    let dayData = [];
+    let lastRenderedDays = 0;
+
+    function money(value) {
+      return new Intl.NumberFormat('en-MY', {
+        style: 'currency', currency: 'MYR', minimumFractionDigits: 2
+      }).format(Number(value) || 0);
+    }
+
+    function numberValue(id) {
+      const value = Number.parseFloat($(id).value);
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    }
+
+    function intValue(id, fallback = 0) {
+      const value = Number.parseInt($(id).value, 10);
+      return Number.isFinite(value) && value >= 0 ? value : fallback;
+    }
+
+    function safeText(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[c]));
+    }
+
+    function expenseId() {
+      return `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    function blankExpense(category = 'food') {
+      return { id: expenseId(), name: '', category, amount: 0 };
+    }
+
+    function blankDay(index) {
+      return { title: `Day ${index + 1}`, note: '', items: [] };
+    }
+
+    function normalizeDay(raw, index) {
+      const base = blankDay(index);
+      if (!raw || typeof raw !== 'object') return base;
+
+      const result = {
+        title: raw.title || base.title,
+        note: raw.note || '',
+        items: []
+      };
+
+      if (Array.isArray(raw.items)) {
+        result.items = raw.items.map(item => ({
+          id: item.id || expenseId(),
+          name: String(item.name || ''),
+          category: categories.some(category => category.key === item.category) ? item.category : 'other',
+          amount: Math.max(0, Number(item.amount) || 0)
+        }));
+      } else {
+        // Convert expenses saved by the previous fixed-category version.
+        categories.forEach(category => {
+          const amount = Math.max(0, Number(raw[category.key]) || 0);
+          if (amount > 0) {
+            result.items.push({ id: expenseId(), name: category.label, category: category.key, amount });
+          }
+        });
+      }
+      return result;
+    }
+
+    function normalizeDays(count) {
+      dayData = Array.from({ length: count }, (_, index) => normalizeDay(dayData[index], index));
+    }
+
+    function dayTotal(day) {
+      return (day?.items || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    }
+
+    function categoryInfo(key) {
+      return categories.find(category => category.key === key) || categories[categories.length - 1];
+    }
+
+    function renderExpenseItem(item, dayIndex, itemIndex) {
+      return `
+        <div class="expense-item" data-expense-row="${item.id}">
+          <div class="expense-item-top">
+            <strong>Cost ${itemIndex + 1}</strong>
+            <button class="remove-expense" type="button" data-remove-expense="${item.id}" data-day-index="${dayIndex}" aria-label="Delete cost ${itemIndex + 1}" title="Delete this cost">✕</button>
+          </div>
+          <div class="expense-item-grid">
+            <div class="field">
+              <label for="category_${item.id}">Category</label>
+              <select id="category_${item.id}" data-item-field="category" data-item-id="${item.id}" data-day-index="${dayIndex}">
+                ${categories.map(category => `<option value="${category.key}" ${item.category === category.key ? 'selected' : ''}>${category.icon} ${category.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label for="name_${item.id}">Expense name</label>
+              <input id="name_${item.id}" data-item-field="name" data-item-id="${item.id}" data-day-index="${dayIndex}" type="text" value="${safeText(item.name)}" placeholder="e.g. Breakfast" maxlength="50" />
+            </div>
+            <div class="field">
+              <label for="amount_${item.id}">Amount</label>
+              <div class="input-wrap"><span class="prefix">RM</span><input id="amount_${item.id}" data-item-field="amount" data-item-id="${item.id}" data-day-index="${dayIndex}" type="number" min="0" step="0.01" value="${Number(item.amount) || 0}" inputmode="decimal" /></div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderDays(force = false) {
+      const count = Math.max(1, intValue('days', 4));
+      if (!force && count === lastRenderedDays) return;
+
+      const openStates = [...document.querySelectorAll('.day-card')].map(card => card.open);
+      normalizeDays(count);
+
+      $('dayCards').innerHTML = dayData.map((day, index) => {
+        const itemCount = day.items.length;
+        return `
+          <details class="card day-card" data-day-card="${index}" ${index === 0 || openStates[index] ? 'open' : ''}>
+            <summary>
+              <div class="day-number">${index + 1}</div>
+              <div class="day-heading">
+                <strong id="dayHeading${index}">${safeText(day.title || `Day ${index + 1}`)}</strong>
+                <span>${index === 0 ? 'Arrival day' : index === count - 1 ? 'Return day' : 'Full day in Penang'}</span>
+                <div class="item-count" id="itemCount${index}">${itemCount} cost item${itemCount === 1 ? '' : 's'}</div>
+              </div>
+              <div class="day-summary-total"><span>Day total</span><strong id="daySummaryTotal${index}">${money(dayTotal(day))}</strong></div>
+            </summary>
+            <div class="day-content">
+              <div class="grid day-note">
+                <div class="field">
+                  <label for="dayTitle${index}">Day name</label>
+                  <input id="dayTitle${index}" data-day-title="${index}" type="text" value="${safeText(day.title)}" maxlength="40" />
+                </div>
+                <div class="field">
+                  <label for="dayNote${index}">Plan or location</label>
+                  <input id="dayNote${index}" data-day-note="${index}" type="text" value="${safeText(day.note)}" placeholder="e.g. George Town" maxlength="60" />
+                </div>
+              </div>
+
+              <div class="expense-list" id="expenseList${index}">
+                ${itemCount ? day.items.map((item, itemIndex) => renderExpenseItem(item, index, itemIndex)).join('') : '<div class="empty-expenses">No costs added yet.<br>Tap “Add cost” and enter each payment separately.</div>'}
+              </div>
+
+              <div class="add-expense-row">
+                <span>Add meals, Grab rides, tickets, shopping, and other payments as separate items.</span>
+                <button class="btn btn-soft add-expense-btn" type="button" data-add-expense="${index}">＋ Add cost</button>
+              </div>
+              <div class="day-total-box"><span>Total spending for ${safeText(day.title || `Day ${index + 1}`)}</span><strong id="dayTotal${index}">${money(dayTotal(day))}</strong></div>
+            </div>
+          </details>`;
+      }).join('');
+
+      lastRenderedDays = count;
+    }
+
+    function findItem(dayIndex, itemId) {
+      return dayData[dayIndex]?.items.find(item => item.id === itemId);
+    }
+
+    function calculateData() {
+      const days = Math.max(1, intValue('days', 4));
+      const nights = Math.max(0, intValue('nights', 3));
+      const rooms = Math.max(1, intValue('rooms', 1));
+      const travelers = Math.max(1, intValue('travelers', 1));
+      const hotelTotal = numberValue('hotel') * nights * rooms;
+      const sharedTotal = numberValue('mainTransport') + hotelTotal + numberValue('sharedOther');
+      const dailyTotals = dayData.slice(0, days).map(dayTotal);
+      const dailyTotal = dailyTotals.reduce((sum, value) => sum + value, 0);
+      const baseTotal = sharedTotal + dailyTotal;
+      const bufferPct = Math.max(0, intValue('buffer', 0));
+      const bufferAmount = baseTotal * bufferPct / 100;
+      const grandTotal = baseTotal + bufferAmount;
+      return { days, nights, rooms, travelers, hotelTotal, sharedTotal, dailyTotals, dailyTotal, baseTotal, bufferPct, bufferAmount, grandTotal };
+    }
+
+    function updateTotals() {
+      const data = calculateData();
+
+      $('heroDays').textContent = `${data.days} day${data.days === 1 ? '' : 's'}`;
+      $('heroNights').textContent = `${data.nights} night${data.nights === 1 ? '' : 's'}`;
+      $('hotelFormula').textContent = `${data.nights} night${data.nights === 1 ? '' : 's'} × ${data.rooms} room${data.rooms === 1 ? '' : 's'}`;
+      $('hotelTotal').textContent = money(data.hotelTotal);
+      $('bufferValue').textContent = data.bufferPct;
+      $('grandTotal').textContent = money(data.grandTotal);
+      $('summarySub').textContent = `${money(data.grandTotal / data.travelers)} per person • ${money(data.grandTotal / data.days)} average per day`;
+
+      data.dailyTotals.forEach((total, index) => {
+        if ($(`daySummaryTotal${index}`)) $(`daySummaryTotal${index}`).textContent = money(total);
+        if ($(`dayTotal${index}`)) $(`dayTotal${index}`).textContent = money(total);
+        if ($(`itemCount${index}`)) {
+          const count = dayData[index]?.items.length || 0;
+          $(`itemCount${index}`).textContent = `${count} cost item${count === 1 ? '' : 's'}`;
+        }
+      });
+
+      const dailyRows = data.dailyTotals.map((total, index) => {
+        const title = dayData[index]?.title || `Day ${index + 1}`;
+        const count = dayData[index]?.items.length || 0;
+        return `<div class="summary-row"><span>${safeText(title)} · ${count} item${count === 1 ? '' : 's'}</span><strong>${money(total)}</strong></div>`;
+      }).join('');
+
+      $('costSummary').innerHTML = `
+        <div class="summary-row"><span>Return transport</span><strong>${money(numberValue('mainTransport'))}</strong></div>
+        <div class="summary-row"><span>Accommodation (${data.nights} nights)</span><strong>${money(data.hotelTotal)}</strong></div>
+        <div class="summary-row"><span>Other shared costs</span><strong>${money(numberValue('sharedOther'))}</strong></div>
+        ${dailyRows}
+        <div class="summary-row"><span>Safety buffer (${data.bufferPct}%)</span><strong>${money(data.bufferAmount)}</strong></div>
+        <div class="summary-row total-line"><span>Estimated trip total</span><strong>${money(data.grandTotal)}</strong></div>`;
+
+      saveState();
+    }
+
+    function getCurrentState() {
+      return {
+        tripName: $('tripName').value,
+        travelers: $('travelers').value,
+        days: $('days').value,
+        nights: $('nights').value,
+        rooms: $('rooms').value,
+        transportMode: $('transportMode').value,
+        mainTransport: $('mainTransport').value,
+        hotel: $('hotel').value,
+        sharedOther: $('sharedOther').value,
+        buffer: $('buffer').value,
+        dayData: JSON.parse(JSON.stringify(dayData))
+      };
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(getCurrentState()));
+      } catch (_) {
+        updateStorageStatus(false);
+      }
+    }
+
+    function applySavedState(saved) {
+      ['tripName','travelers','days','nights','rooms','transportMode','mainTransport','hotel','sharedOther','buffer'].forEach(key => {
+        if (saved[key] !== undefined && $(key)) $(key).value = saved[key];
+      });
+      dayData = Array.isArray(saved.dayData) ? saved.dayData : [];
+    }
+
+    function loadState() {
+      try {
+        const current = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (current) {
+          applySavedState(current);
+          return true;
+        }
+        const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
+        if (legacy) {
+          applySavedState(legacy);
+          return true;
+        }
+      } catch (_) {}
+      return false;
+    }
+
+    function item(name, category, amount) {
+      return { id: expenseId(), name, category, amount };
+    }
+
+    function loadExample() {
+      const example = {
+        tripName: 'Penang 4D3N Food & Sightseeing Trip', travelers: 2, days: 4,
+        nights: 3, rooms: 1, transportMode: 'Car', mainTransport: 260,
+        hotel: 180, sharedOther: 40, buffer: 10
+      };
+      Object.entries(example).forEach(([key, value]) => $(key).value = value);
+      dayData = [
+        { title: 'Day 1 – Arrival', note: 'George Town & street art', items: [item('Lunch', 'food', 42), item('Dinner', 'food', 58), item('Parking', 'transport', 12), item('Street art souvenir', 'shopping', 25)] },
+        { title: 'Day 2 – Penang Hill', note: 'Penang Hill & Kek Lok Si', items: [item('Breakfast', 'food', 24), item('Grab rides', 'transport', 38), item('Penang Hill tickets', 'activities', 60), item('Lunch', 'food', 45), item('Dinner', 'food', 58)] },
+        { title: 'Day 3 – Beach Day', note: 'Batu Ferringhi & night market', items: [item('Breakfast', 'food', 26), item('Beach activity', 'activities', 55), item('Lunch', 'food', 48), item('Night market food', 'food', 52), item('Souvenirs', 'shopping', 70)] },
+        { title: 'Day 4 – Return', note: 'Breakfast, shopping & return home', items: [item('Breakfast', 'food', 24), item('Local biscuits', 'shopping', 48), item('Parking', 'transport', 8), item('Lunch', 'food', 38)] }
+      ];
+      lastRenderedDays = 0;
+      renderDays(true);
+      updateTotals();
+      showToast('Itemized 4D3N example loaded');
+    }
+
+    function resetAll() {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      $('tripName').value = 'My Penang 4D3N Trip';
+      $('travelers').value = 2;
+      $('days').value = 4;
+      $('nights').value = 3;
+      $('rooms').value = 1;
+      $('transportMode').value = 'Car';
+      $('mainTransport').value = 0;
+      $('hotel').value = 0;
+      $('sharedOther').value = 0;
+      $('buffer').value = 10;
+      dayData = Array.from({ length: 4 }, (_, index) => blankDay(index));
+      lastRenderedDays = 0;
+      renderDays(true);
+      updateTotals();
+      showToast('Budget reset to 4D3N');
+    }
+
+    function toggleAllDays() {
+      const cards = [...document.querySelectorAll('.day-card')];
+      const shouldOpen = cards.some(card => !card.open);
+      cards.forEach(card => { card.open = shouldOpen; });
+      $('expandBtn').textContent = shouldOpen ? 'Close all days' : 'Open all days';
+    }
+
+    async function copySummary() {
+      const data = calculateData();
+      const lines = [
+        `${$('tripName').value || 'Penang Trip'} Budget`,
+        `${data.days} days, ${data.nights} nights, ${data.travelers} traveller(s)`,
+        `Main transport: ${$('transportMode').value}`,
+        '',
+        `Return transport: ${money(numberValue('mainTransport'))}`,
+        `Accommodation: ${money(data.hotelTotal)}`,
+        `Other shared costs: ${money(numberValue('sharedOther'))}`,
+        ''
+      ];
+
+      data.dailyTotals.forEach((total, index) => {
+        const day = dayData[index];
+        lines.push(`${day?.title || `Day ${index + 1}`}${day?.note ? ` – ${day.note}` : ''}`);
+        if (!day?.items.length) lines.push('  No costs added');
+        day?.items.forEach(entry => {
+          const category = categoryInfo(entry.category);
+          lines.push(`  ${category.icon} ${entry.name || category.label}: ${money(entry.amount)}`);
+        });
+        lines.push(`  Day total: ${money(total)}`, '');
+      });
+
+      lines.push(
+        `Safety buffer (${data.bufferPct}%): ${money(data.bufferAmount)}`,
+        `TOTAL: ${money(data.grandTotal)}`,
+        `Per person: ${money(data.grandTotal / data.travelers)}`,
+        `Average per day: ${money(data.grandTotal / data.days)}`
+      );
+
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        showToast('Detailed summary copied');
+      } catch (_) {
+        showToast('Copy is not supported here');
+      }
+    }
+
+
+    function storageWorks() {
+      try {
+        const key = '__penang_storage_test__';
+        localStorage.setItem(key, '1');
+        localStorage.removeItem(key);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function updateStorageStatus(works = storageWorks()) {
+      if (!$('storageStatusTitle')) return;
+      if (!works) {
+        $('storageStatusTitle').textContent = 'Storage is blocked';
+        $('storageStatusText').textContent = 'Open the hosted website in Safari and avoid Private Browsing to keep records reliably.';
+        return;
+      }
+      if (location.protocol === 'file:') {
+        $('storageStatusTitle').textContent = 'Local file mode';
+        $('storageStatusText').textContent = 'Saving may be isolated or temporary on iPhone. Hosting the website gives it a stable web address and storage area.';
+      } else {
+        $('storageStatusTitle').textContent = 'Browser saving is active';
+        $('storageStatusText').textContent = 'Your current draft and saved history stay on this device and browser.';
+      }
+    }
+
+    function loadHistory() {
+      try {
+        const value = JSON.parse(localStorage.getItem(HISTORY_KEY));
+        return Array.isArray(value) ? value : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function storeHistory(history) {
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 30)));
+        return true;
+      } catch (_) {
+        updateStorageStatus(false);
+        return false;
+      }
+    }
+
+    function formatSavedDate(value) {
+      try {
+        return new Intl.DateTimeFormat('en-MY', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        }).format(new Date(value));
+      } catch (_) {
+        return String(value || '');
+      }
+    }
+
+    function renderHistory() {
+      if (!$('historyList')) return;
+      const history = loadHistory();
+      if (!history.length) {
+        $('historyList').innerHTML = '<div class="history-empty">No saved records yet. Tap <strong>Save history record</strong> after entering your expenses.</div>';
+        return;
+      }
+      $('historyList').innerHTML = history.map(entry => `
+        <article class="history-entry" data-history-id="${safeText(entry.id)}">
+          <div class="history-entry-head">
+            <div>
+              <h4>${safeText(entry.name || 'Penang Trip')}</h4>
+              <p>${safeText(formatSavedDate(entry.savedAt))} · ${safeText(entry.state?.days || 4)}D${safeText(entry.state?.nights || 3)}N</p>
+            </div>
+            <div class="history-entry-total">${money(entry.total)}</div>
+          </div>
+          <div class="history-entry-actions">
+            <button class="history-load" type="button" data-history-load="${safeText(entry.id)}">Open</button>
+            <button class="history-share" type="button" data-history-share="${safeText(entry.id)}">Share</button>
+            <button class="history-delete" type="button" data-history-delete="${safeText(entry.id)}">Delete</button>
+          </div>
+        </article>`).join('');
+    }
+
+    function saveHistoryRecord() {
+      const data = calculateData();
+      const state = getCurrentState();
+      const history = loadHistory();
+      history.unshift({
+        id: expenseId(),
+        savedAt: new Date().toISOString(),
+        name: state.tripName || 'Penang Trip',
+        total: data.grandTotal,
+        state
+      });
+      if (storeHistory(history)) {
+        renderHistory();
+        showToast('History record saved');
+      }
+    }
+
+    function encodeShareState(state) {
+      const bytes = new TextEncoder().encode(JSON.stringify({ version: SHARE_VERSION, state }));
+      let binary = '';
+      bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    function decodeShareState(value) {
+      const padded = value.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((value.length + 3) % 4);
+      const binary = atob(padded);
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+      const payload = JSON.parse(new TextDecoder().decode(bytes));
+      return payload?.state || null;
+    }
+
+    function sharedUrlFor(state) {
+      const url = new URL(location.href);
+      url.hash = `trip=${encodeShareState(state)}`;
+      return url.toString();
+    }
+
+    function exportPayload(state) {
+      return JSON.stringify({
+        type: 'penang-trip-budget', version: SHARE_VERSION,
+        exportedAt: new Date().toISOString(), state
+      }, null, 2);
+    }
+
+    function safeFilename(name) {
+      const cleaned = String(name || 'penang-trip').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      return `${cleaned || 'penang-trip'}-backup.json`;
+    }
+
+    function downloadBackup(state = getCurrentState()) {
+      const blob = new Blob([exportPayload(state)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = safeFilename(state.tripName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      showToast('Backup file created');
+    }
+
+    async function shareState(state = getCurrentState()) {
+      const title = state.tripName || 'Penang Trip Budget';
+      const data = calculateDataFromState(state);
+      const text = `${title}: ${money(data.grandTotal)} for ${state.days || 4} days and ${state.nights || 3} nights.`;
+
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        const url = sharedUrlFor(state);
+        try {
+          if (navigator.share) {
+            await navigator.share({ title, text, url });
+          } else {
+            await navigator.clipboard.writeText(url);
+            showToast('Share link copied');
+          }
+          return;
+        } catch (error) {
+          if (error?.name === 'AbortError') return;
+        }
+      }
+
+      const file = new File([exportPayload(state)], safeFilename(title), { type: 'application/json' });
+      try {
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ title, text, files: [file] });
+          return;
+        }
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+      downloadBackup(state);
+      showToast('Send this backup file to your girlfriend');
+    }
+
+    function calculateDataFromState(state) {
+      const days = Math.max(1, Number.parseInt(state.days, 10) || 4);
+      const nights = Math.max(0, Number.parseInt(state.nights, 10) || 0);
+      const rooms = Math.max(1, Number.parseInt(state.rooms, 10) || 1);
+      const travelers = Math.max(1, Number.parseInt(state.travelers, 10) || 1);
+      const hotelTotal = Math.max(0, Number(state.hotel) || 0) * nights * rooms;
+      const dailyTotal = (state.dayData || []).slice(0, days).reduce((sum, day) => sum + dayTotal(day), 0);
+      const baseTotal = Math.max(0, Number(state.mainTransport) || 0) + hotelTotal + Math.max(0, Number(state.sharedOther) || 0) + dailyTotal;
+      const bufferPct = Math.max(0, Number(state.buffer) || 0);
+      const bufferAmount = baseTotal * bufferPct / 100;
+      return { days, nights, rooms, travelers, hotelTotal, dailyTotal, baseTotal, bufferPct, bufferAmount, grandTotal: baseTotal + bufferAmount };
+    }
+
+    function applyImportedState(state, message = 'Trip imported') {
+      if (!state || typeof state !== 'object') throw new Error('Invalid trip file');
+      applySavedState(state);
+      lastRenderedDays = 0;
+      renderDays(true);
+      updateTotals();
+      showToast(message);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function importBackupFile(file) {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const state = payload?.state || payload;
+      applyImportedState(state, 'Backup imported');
+    }
+
+    function stateFromHash() {
+      const match = location.hash.match(/^#trip=(.+)$/);
+      if (!match) return null;
+      try {
+        return decodeShareState(match[1]);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      $('toast').textContent = message;
+      $('toast').classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
+    }
+
+    $('dayCards').addEventListener('input', event => {
+      const target = event.target;
+      if (target.dataset.dayTitle !== undefined) {
+        const dayIndex = Number(target.dataset.dayTitle);
+        dayData[dayIndex].title = target.value;
+        $(`dayHeading${dayIndex}`).textContent = target.value || `Day ${dayIndex + 1}`;
+        updateTotals();
+        return;
+      }
+      if (target.dataset.dayNote !== undefined) {
+        dayData[Number(target.dataset.dayNote)].note = target.value;
+        saveState();
+        return;
+      }
+      if (target.dataset.itemField) {
+        const dayIndex = Number(target.dataset.dayIndex);
+        const entry = findItem(dayIndex, target.dataset.itemId);
+        if (!entry) return;
+        entry[target.dataset.itemField] = target.dataset.itemField === 'amount' ? Math.max(0, Number.parseFloat(target.value) || 0) : target.value;
+        updateTotals();
+      }
+    });
+
+    $('dayCards').addEventListener('change', event => {
+      const target = event.target;
+      if (target.dataset.itemField === 'category') {
+        const entry = findItem(Number(target.dataset.dayIndex), target.dataset.itemId);
+        if (entry) {
+          entry.category = target.value;
+          updateTotals();
+        }
+      }
+    });
+
+    $('dayCards').addEventListener('click', event => {
+      const addButton = event.target.closest('[data-add-expense]');
+      if (addButton) {
+        const dayIndex = Number(addButton.dataset.addExpense);
+        const newItem = blankExpense();
+        dayData[dayIndex].items.push(newItem);
+        renderDays(true);
+        updateTotals();
+        requestAnimationFrame(() => $(`name_${newItem.id}`)?.focus());
+        return;
+      }
+
+      const removeButton = event.target.closest('[data-remove-expense]');
+      if (removeButton) {
+        const dayIndex = Number(removeButton.dataset.dayIndex);
+        const itemId = removeButton.dataset.removeExpense;
+        dayData[dayIndex].items = dayData[dayIndex].items.filter(item => item.id !== itemId);
+        renderDays(true);
+        updateTotals();
+        showToast('Cost removed');
+      }
+    });
+
+
+    $('saveRecordBtn').addEventListener('click', saveHistoryRecord);
+    $('shareTripBtn').addEventListener('click', () => shareState());
+    $('exportTripBtn').addEventListener('click', () => downloadBackup());
+    $('importTripBtn').addEventListener('click', () => $('importTripFile').click());
+    $('importTripFile').addEventListener('change', async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        await importBackupFile(file);
+      } catch (_) {
+        showToast('This backup file is not valid');
+      } finally {
+        event.target.value = '';
+      }
+    });
+
+    $('historyList').addEventListener('click', event => {
+      const loadButton = event.target.closest('[data-history-load]');
+      const shareButton = event.target.closest('[data-history-share]');
+      const deleteButton = event.target.closest('[data-history-delete]');
+      const history = loadHistory();
+
+      if (loadButton) {
+        const entry = history.find(item => item.id === loadButton.dataset.historyLoad);
+        if (entry) applyImportedState(entry.state, 'Saved record opened');
+        return;
+      }
+      if (shareButton) {
+        const entry = history.find(item => item.id === shareButton.dataset.historyShare);
+        if (entry) shareState(entry.state);
+        return;
+      }
+      if (deleteButton) {
+        storeHistory(history.filter(item => item.id !== deleteButton.dataset.historyDelete));
+        renderHistory();
+        showToast('History record deleted');
+      }
+    });
+
+    ['tripName','travelers','nights','rooms','transportMode','mainTransport','hotel','sharedOther','buffer'].forEach(id => {
+      $(id).addEventListener('input', updateTotals);
+      $(id).addEventListener('change', updateTotals);
+    });
+
+    $('days').addEventListener('input', () => { renderDays(true); updateTotals(); });
+    $('days').addEventListener('change', () => { renderDays(true); updateTotals(); });
+    $('sampleBtn').addEventListener('click', loadExample);
+    $('resetBtn').addEventListener('click', resetAll);
+    $('expandBtn').addEventListener('click', toggleAllDays);
+    $('copyBtn').addEventListener('click', copySummary);
+
+    const sharedState = stateFromHash();
+    const hadSavedState = sharedState ? true : loadState();
+    if (sharedState) applySavedState(sharedState);
+    if (!hadSavedState) dayData = Array.from({ length: 4 }, (_, index) => blankDay(index));
+    renderDays(true);
+    updateTotals();
+    updateStorageStatus();
+    renderHistory();
+    if (sharedState) setTimeout(() => showToast('Shared trip loaded — save a history record to keep it'), 250);
+
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
